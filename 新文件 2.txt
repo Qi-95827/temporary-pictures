@@ -1,0 +1,183 @@
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class ClientWifiQualityArchiveFileServiceImplTest {
+    private ClientWifiQualityArchiveFileServiceImpl service;
+    private File mockFile;
+    private InputStream mockInputStream;
+
+    @BeforeEach
+    public void setUp() {
+        service = new ClientWifiQualityArchiveFileServiceImpl();
+        mockFile = Mockito.mock(File.class);
+        mockInputStream = Mockito.mock(InputStream.class);
+    }
+
+    @Test
+    public void testReadFromFile_FileExists() throws IOException {
+        // Arrange
+        when(mockFile.exists()).thenReturn(true);
+        when(mockFile.getAbsolutePath()).thenReturn("/mock/path");
+        FileInputStream fileInputStream = Mockito.mock(FileInputStream.class);
+        whenNew(FileInputStream.class).withArguments(mockFile).thenReturn(fileInputStream);
+
+        ArchiveFormat archiveFormat = ArchiveFormat.JSON;
+
+        // Act & Assert
+        try {
+            List<ClientWifiQualityPO> result = service.readFrom(mockFile, archiveFormat);
+            assertNotNull(result);
+        } catch (RuntimeException e) {
+            fail("Exception should not have been thrown: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testReadFromFile_FileNotFound() {
+        // Arrange
+        when(mockFile.exists()).thenReturn(false);
+        when(mockFile.getAbsolutePath()).thenReturn("/mock/path");
+
+        ArchiveFormat archiveFormat = ArchiveFormat.JSON;
+
+        // Act & Assert
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+            service.readFrom(mockFile, archiveFormat);
+        });
+        assertTrue(thrown.getMessage().contains("file not exist"));
+    }
+
+    @Test
+    public void testReadFromInputStream_PBFormat() throws IOException {
+        // Arrange
+        ArchiveFormat archiveFormat = ArchiveFormat.PB;
+        when(mockInputStream.read()).thenReturn(-1); // Simulate end of stream
+
+        // Act & Assert
+        try {
+            List<ClientWifiQualityPO> result = service.readFrom(mockInputStream, archiveFormat);
+            assertNotNull(result);
+        } catch (RuntimeException e) {
+            fail("Exception should not have been thrown: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testReadFromInputStream_JsonFormat() throws IOException {
+        // Arrange
+        ArchiveFormat archiveFormat = ArchiveFormat.JSON;
+        when(mockInputStream.read()).thenReturn(-1); // Simulate end of stream
+
+        // Act & Assert
+        try {
+            List<ClientWifiQualityPO> result = service.readFrom(mockInputStream, archiveFormat);
+            assertNotNull(result);
+        } catch (RuntimeException e) {
+            fail("Exception should not have been thrown: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testReadFromInputStream_UnknownFormat() {
+        // Arrange
+        ArchiveFormat archiveFormat = ArchiveFormat.UNKNOWN;
+
+        // Act & Assert
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+            service.readFrom(mockInputStream, archiveFormat);
+        });
+        assertTrue(thrown.getMessage().contains("unknown ClientWifiquality archiveFormat"));
+    }
+
+    @Test
+    public void testReadFromPb_Success() {
+        // Arrange
+        try {
+            when(mockInputStream.read()).thenReturn(-1); // Simulate end of stream
+        } catch (IOException e) {
+            fail("IOException during mocking: " + e.getMessage());
+        }
+
+        // Act & Assert
+        try {
+            List<ClientWifiQualityPO> result = service.readFromPb(mockInputStream);
+            assertNotNull(result);
+        } catch (RuntimeException e) {
+            fail("Exception should not have been thrown: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testReadFromPb_IOException() {
+        // Arrange
+        try {
+            when(mockInputStream.read()).thenThrow(new IOException("Mock IO Exception"));
+        } catch (IOException e) {
+            fail("IOException during mocking: " + e.getMessage());
+        }
+
+        // Act & Assert
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+            service.readFromPb(mockInputStream);
+        });
+        assertTrue(thrown.getMessage().contains("meet exception"));
+    }
+
+    @Test
+    public void testReadFromJson_Success() {
+        // Arrange
+        try {
+            when(mockInputStream.read()).thenReturn(-1); // Simulate end of stream
+        } catch (IOException e) {
+            fail("IOException during mocking: " + e.getMessage());
+        }
+
+        // Act & Assert
+        try {
+            List<ClientWifiQualityPO> result = service.readFromJson(mockInputStream);
+            assertNotNull(result);
+        } catch (RuntimeException e) {
+            fail("Exception should not have been thrown: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testReadFromJson_IOException() {
+        // Arrange
+        try {
+            when(mockInputStream.read()).thenThrow(new IOException("Mock IO Exception"));
+        } catch (IOException e) {
+            fail("IOException during mocking: " + e.getMessage());
+        }
+
+        // Act & Assert
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+            service.readFromJson(mockInputStream);
+        });
+        assertTrue(thrown.getMessage().contains("meet exception"));
+    }
+}
+
+/*
+注释：
+1. `testReadFromFile_FileExists()`: 测试文件存在的情况下，正常读取文件的功能。
+2. `testReadFromFile_FileNotFound()`: 测试文件不存在的情况下，抛出合适的异常。
+3. `testReadFromInputStream_PBFormat()`: 测试从PB格式的输入流读取数据。
+4. `testReadFromInputStream_JsonFormat()`: 测试从JSON格式的输入流读取数据。
+5. `testReadFromInputStream_UnknownFormat()`: 测试未知格式的输入流，确保抛出合适的异常。
+6. `testReadFromPb_Success()`: 测试从PB格式输入流成功读取的情况。
+7. `testReadFromPb_IOException()`: 测试读取PB格式时遇到IOException的情况。
+8. `testReadFromJson_Success()`: 测试从JSON格式输入流成功读取的情况。
+9. `testReadFromJson_IOException()`: 测试读取JSON格式时遇到IOException的情况。
+
+这些测试覆盖了各种可能的情况，包括正常执行、文件不存在、未知格式以及读取时出现的IO异常，确保代码在各种情况下的健壮性。
